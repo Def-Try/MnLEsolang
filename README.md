@@ -1,0 +1,2 @@
+# MnLEsolang
+le cringe
