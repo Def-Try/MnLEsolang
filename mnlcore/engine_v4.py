@@ -437,10 +437,9 @@ class Runner:
     @staticmethod
     def eval(string, clocals):
         try:
-            print(clocals.items())
             return _eval(string,
                          names=dict(
-                             [(n, v[1]) for n, v in filter(lambda v: v[1] is not MnLFunction and v[1] is not PyMnLFunction, clocals.items())]),
+                             [(n, v[1]) for n, v in filter(lambda v: not isinstance(v[1], MnLFunction) and not isinstance(v[1], PyMnLFunction), clocals.items())]),
                          functions=dict(filter(lambda v: v[1] is MnLFunction or v[1] is PyMnLFunction, clocals.items()))
                          )
         except:
