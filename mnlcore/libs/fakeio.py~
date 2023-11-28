@@ -7,7 +7,7 @@ class FakeIO(MnLLibrary):
         self.stdin = ""
         def _fout(*values, sep=" ", end="\n", flush=True):
             print(values)
-            self.stdout += sep.join([str(v) for v in values])+end
+            self.stdout += sep.join(values)+end
         def _fin(_):
             if inp == "":
                 return ""
