@@ -15,13 +15,13 @@ engine = mnlcore.engine_v4.MnLEngine() #  Initialise MnL Engine
 # V1 and V2 used "modules", which is basically cool wrapper for dict of methods
 # You can still load legacy (v1 and v2) modules with engine.load_module - they
 # are going to be automatically converted to library class
-fio = engine.load_library(mnlcore.libs.STDIO)
+fio = engine.load_library(mnlcore.libs.FakeIO)
 engine.load_syntax_table("")
 
-#try:
-engine.run(code)
-#except mnlcore.exceptions.BaseError as e:
-#    print("[ERROR]", e.message)
-#finally:
-#    print(fio.read_output())
-#    print('Code executed.')
+try:
+    engine.run(code)
+except mnlcore.exceptions.BaseError as e:
+    print("[ERROR]", e.message)
+finally:
+    print(fio.read_output())
+    print('Code executed.')
