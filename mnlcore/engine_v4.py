@@ -561,8 +561,8 @@ class MnLEngine:
         runner.loaded_libs = self.loaded_libs
 
         if self.persisting_globals:
-            runner.globals += self.__locals["runner"]
-            parser.values_names += self.__locals["parser"]
+            runner.globals = self.__locals["runner"]
+            parser.values_names = self.__locals["parser"]
 
         for lib in self.loaded_libs:
             if lib.need_cleanup:
