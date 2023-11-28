@@ -527,6 +527,8 @@ class MnLEngine:
     def __init__(self):
         self.loaded_libs = []
         self.syntax_table = base_syntax_table
+        self.persisting_globals = False
+        self.__locals = {"runner": {}, "parser": []}
 
     def reinit(self):
         return self.__init__()
@@ -558,6 +560,11 @@ class MnLEngine:
         runner = Runner()
         runner.load_syntax_table(self.syntax_table)
         runner.loaded_libs = self.loaded_libs
+
+        if self.persisting_globals:
+            runner.globals += self.__locals["runner"]
+            parser.values_names += self.__locals["parser"]
+
         for lib in self.loaded_libs:
             if lib.need_cleanup:
                 lib.cleanup()
@@ -568,6 +575,12 @@ class MnLEngine:
                 runner.globals[key] = value
 
         runner.run(parser.parse())
+
+        if self.persisting_globals:
+            self.__locals["parser"] = parser.values_names
+            self.__locals["runner"] = runner.globals
+        else:
+            self.__locals = {"runner": {}, "parser": []}
 
     def __str__(self=None):
         return "MnLEngine_v4"
