@@ -1,4 +1,5 @@
 import random
+import multiprocessing
 from simpleeval import simple_eval as _eval
 from .libs.base import PyMnLFunction
 from .libs.base import MnLLibrary
@@ -161,6 +162,7 @@ class Parser:
         if done != 0:
             raise exceptions.NotCompleteCodeBlockError(startpositions)
         token[2] = token[2].strip()
+        token[4] = token[4].strip()
         self.values_names.append(token[2])
         parser = Parser(token[4], loff - 1)
         parser.values_names = self.values_names.copy() + token[3]
@@ -581,6 +583,15 @@ class MnLEngine:
             self.__locals["runner"] = runner.globals.copy()
         else:
             self.__locals = {"runner": {}, "parser": []}
+
+    async def run_nonblocking(self, code, timeout):
+        with multiprocessing.Pool(processes=2) as pool:
+            result = pool.apply_async(self.run, [code])
+            try:
+                result.get(timeout=timeout)
+                return result.get()
+            except multiprocessing.TimeoutError:
+                raise TimeoutError("Execution timed out")
 
     def __str__(self=None):
         return "MnLEngine_v4"
