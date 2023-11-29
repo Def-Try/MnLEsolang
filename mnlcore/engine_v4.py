@@ -1,5 +1,6 @@
 import random
 import multiprocessing
+import threading
 from simpleeval import simple_eval as _eval
 from .libs.base import PyMnLFunction
 from .libs.base import MnLLibrary
@@ -523,6 +524,7 @@ class Runner:
         returnv = None
         lifok = False
         for token in tokens:
+            print("  "*level, *token)
             if token[0] == "RETURN":
                 returnv = self.get_real(token[1], clocals)
                 break
@@ -644,14 +646,25 @@ class MnLEngine:
 
         return returnv
 
+#    async def run_nonblocking(self, code, timeout):
+#        with multiprocessing.Pool(processes=2) as pool:
+#            result = pool.apply_async(self.run, [code])
+#            try:
+#                result.get(timeout=timeout)
+#            except multiprocessing.TimeoutError:
+#                raise TimeoutError("Execution timed out")
+
     async def run_nonblocking(self, code, timeout):
-        with multiprocessing.Pool(processes=2) as pool:
-            result = pool.apply_async(self.run, [code])
-            try:
-                result.get(timeout=timeout)
-                return result.get()
-            except multiprocessing.TimeoutError:
-                raise TimeoutError("Execution timed out")
+        result = []
+        def execute_code():
+            result.append(self.run(code))
+        thread = threading.Thread(target=execute_code)
+        thread.start()
+        thread.join(timeout=timeout)
+        if thread.is_alive():
+            raise TimeoutError("Execution timed out")
+#        return result[0]
+
 
     def __str__(self=None):
         return "MnLEngine_v4"
