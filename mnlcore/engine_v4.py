@@ -560,16 +560,10 @@ class MnLEngine:
         runner.load_syntax_table(self.syntax_table)
         runner.loaded_libs = self.loaded_libs
 
-        print(runner.globals)
-        print(parser.values_names)
-
         if self.persisting_globals:
             runner.globals = self.__locals["runner"].copy()
             runner.locals[0] = runner.globals
             parser.values_names = self.__locals["parser"].copy()
-
-        print(runner.globals)
-        print(parser.values_names)
 
         for lib in self.loaded_libs:
             if lib.need_cleanup:
@@ -581,9 +575,6 @@ class MnLEngine:
                 runner.globals[key] = value
 
         runner.run(parser.parse())
-
-        print(runner.globals)
-        print(parser.values_names)
 
         if self.persisting_globals:
             self.__locals["parser"] = parser.values_names.copy()
