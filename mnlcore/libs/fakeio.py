@@ -1,23 +1,22 @@
 from .base import MnLLibrary
 from .base import PyMnLFunction
 
-def _fout(*values, sep=" ", end="\n", flush=True):
-    print(values)
-    self.stdout += sep.join([str(v) for v in values])+end
-def _fin(_):
-    if inp == "":
-        return ""
-    inp = self.stdin[:self.stdin.index("\n")]
-    self.stdin = self.stdin[(self.stdin.index("\n")+1):]
-    return inp
-
 class FakeIO(MnLLibrary):
+    def _fout(self, *values, sep=" ", end="\n", flush=True):
+        self.stdout += sep.join([str(v) for v in values])+end
+    def _fin(self, _):
+        if inp == "":
+            return ""
+        inp = self.stdin[:self.stdin.index("\n")]
+        self.stdin = self.stdin[(self.stdin.index("\n")+1):]
+        return inp
+
     def __init__(self):
         self.stdout = ""
         self.stdin = ""
         self.namespace = {
-            'input': PyMnLFunction('input', _fin),
-            'print': PyMnLFunction('print', _fout)
+            'input': PyMnLFunction('input', self._fin),
+            'print': PyMnLFunction('print', self._fout)
         }
         self.initialized = False
         self.need_cleanup = False

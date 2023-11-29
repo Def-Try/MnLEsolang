@@ -19,6 +19,7 @@ version = "4.0"
 base_syntax_table = '''
 IFSTAT -> if
 ELSESTAT -> else
+WHILESTAT -> while
 EOLT -> ;
 DTYPES -> var=/int=int/string=str/float=float/double=float
 '''
@@ -96,6 +97,8 @@ class Parser:
                 self.position -= 1
                 raise exceptions.UnexpectedSymbolError(self.advance(),
                                                        index_to_coordinates(self.code, self.position, self.line_offset))
+
+        if any([i not in "0123456789+-/*^%(). " for i in st]): nc = True
         if nc:
             return 'NC', st.strip()
         try:
@@ -279,6 +282,45 @@ class Parser:
         token[3] = parser.parse()
         return token
 
+    def make_while_token(self):
+        token = ["LOOP", "WHILE", "", ""]
+        while self.position < len(self.code) - 1:
+            symbol = self.advance()
+            if symbol not in " (":
+                self.position -= 1
+                raise exceptions.UnexpectedSymbolError(self.advance(),
+                                                       index_to_coordinates(self.code, self.position, self.line_offset))
+            if symbol == "(":
+                break
+        while self.position < len(self.code) - 1:
+            symbol = self.advance()
+            if symbol == ")":
+                break
+            token[2] += symbol
+        while self.position < len(self.code) - 1:
+            symbol = self.advance()
+            if symbol == "{":
+                break
+        loff = index_to_coordinates(self.code, self.position + 1, self.line_offset)[0]
+        startpositions = [index_to_coordinates(self.code, self.position, self.line_offset)]
+        done = 1
+        while self.position < len(self.code) - 1:
+            symbol = self.advance()
+            if symbol == "}":
+                done -= 1
+            if symbol == "{":
+                done += 1
+                startpositions.append(index_to_coordinates(self.code, self.position, self.line_offset))
+            if done == 0:
+                break
+            token[3] += symbol
+        if done != 0:
+            raise exceptions.NotCompleteCodeBlockError(startpositions)
+        parser = Parser(token[3], loff - 1)
+        parser.values_names = self.values_names.copy()
+        token[3] = parser.parse()
+        return token
+
     def make_elseif_token(self, ptoken):
         if ptoken[0] != "COND" or ptoken[1] not in ("IF"):
             raise exceptions.UnexpectedStatementError("elseif",
@@ -362,7 +404,19 @@ class Parser:
             symbol = self.advance()
             cur_token += symbol
             cur_token = cur_token.strip()
-            if cur_token == self.rules["IFSTAT"]:
+            if cur_token == self.rules["WHILESTAT"]:
+                oldpos = self.position
+                while self.position < len(self.code) - 1:
+                    symbol = self.advance()
+                    if symbol not in " (":
+                        self.position = oldpos
+                        break
+                    if symbol == "(":
+                        self.position = oldpos
+                        tokens.append(self.make_while_token())
+                        cur_token = ""
+                        break
+            elif cur_token == self.rules["IFSTAT"]:
                 oldpos = self.position
                 while self.position < len(self.code) - 1:
                     symbol = self.advance()
@@ -399,7 +453,7 @@ class Parser:
                                                                index_to_coordinates(self.code, self.position,
                                                                                     self.line_offset))
 
-            elif cur_token in ('int', 'string', 'float'):
+            elif cur_token in (i.split("=")[0] for i in self.rules["DTYPES"].split("/")):
                 if self.advance() != " ":
                     self.position -= 1
                     raise exceptions.UnexpectedSymbolError(self.advance(),
@@ -479,6 +533,10 @@ class Runner:
                     *[self.convert(self.get_real(i, clocals)[1], 'var', clocals) for i in token[2]])
             if token[0] == "FUNC":
                 clocals[token[2]] = MnLFunction(token[2], token[3], token[4], self, token[1])
+            if token[0] == "LOOP":
+                if token[1] == "WHILE":
+                    while self.eval(token[2], clocals):
+                        returnv = self.run(token[3], level)
             if token[0] == "COND":
                 if token[1] == "IF":
                     if not self.eval(token[2], clocals):
@@ -576,13 +634,15 @@ class MnLEngine:
                 parser.values_names.append(key)
                 runner.globals[key] = value
 
-        runner.run(parser.parse())
+        returnv = runner.run(parser.parse())
 
         if self.persisting_globals:
             self.__locals["parser"] = parser.values_names.copy()
             self.__locals["runner"] = runner.globals.copy()
         else:
             self.__locals = {"runner": {}, "parser": []}
+
+        return returnv
 
     async def run_nonblocking(self, code, timeout):
         with multiprocessing.Pool(processes=2) as pool:
